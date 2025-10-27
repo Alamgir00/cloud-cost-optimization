@@ -1,1 +1,46 @@
+name: AWS Cost Optimization
+
+on:
+  schedule:
+    - cron: '0 9 * * 1' # Every Monday 09:00 UTC
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scripts/requirements.txt
+
+      - name: Run metrics collection
+        run: |
+          mkdir -p reports
+          python scripts/collect_metrics.py --days 7 --output reports/cost_optimization_report.csv --region ${{ secrets.AWS_REGION }}
+
+      - name: Generate HTML report
+        run: |
+          python scripts/generate_report.py reports/cost_optimization_report.csv reports/cost_optimization_report.html
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cost-optimization-report
+          path: reports/cost_optimization_report.html
 
